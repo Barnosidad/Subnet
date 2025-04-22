@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Subnet", "Subnet.csproj", "{CBFB16D1-9FD7-4098-BEA0-FB4CF29C0845}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CBFB16D1-9FD7-4098-BEA0-FB4CF29C0845}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBFB16D1-9FD7-4098-BEA0-FB4CF29C0845}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBFB16D1-9FD7-4098-BEA0-FB4CF29C0845}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBFB16D1-9FD7-4098-BEA0-FB4CF29C0845}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {25DA6FD2-D508-42BB-AF9A-426EAA1B2A58}
+	EndGlobalSection
+EndGlobal

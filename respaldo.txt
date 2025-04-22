@@ -1,0 +1,291 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Dynamic;
+using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.Marshalling;
+
+namespace subnet
+{
+    class Program
+    {
+        public struct Direccion
+        {
+            // Ahora todo tiene que basarse en la direccion uint de 32 bits y no en los arreglos de bytes
+            public Direccion(byte _O1, byte _O2, byte _O3, byte _O4, int _slash)
+            {
+                DirB = 0x00000000;
+                int _NP = _slash, _HP = 32 - _slash;
+                if(_NP + _HP > 32) throw new ArgumentException("No puedes asignar esas porciones. ");
+                if(_NP < 1 || _HP < 1) throw new ArgumentException("Alguna de las dos porciones es muy pequena. ");
+                Dir[0] = _O1;
+                Dir[1] = _O2;
+                Dir[2] = _O3;
+                Dir[3] = _O4;
+                DirB += _O1;
+                DirB <<= 8;
+                DirB += _O2;
+                DirB <<= 8;
+                DirB += _O3;
+                DirB <<= 8;
+                DirB += _O4;
+                NP = _NP;
+                HP = _HP;
+                GenerateMask();
+                GenerateIDR();
+                GenerateIDB();
+            }
+            public Direccion(int _O1, int _O2, int _O3, int _O4, int _slash)
+            {
+                DirB = 0x00000000;
+                int _NP = _slash, _HP = 32 - _slash;
+                if(_NP + _HP > 32) throw new ArgumentException("No puedes asignar esas porciones. ");
+                if(_NP < 1 || _HP < 1) throw new ArgumentException("Alguna de las dos porciones es muy pequena. ");
+                if(_O1 > 255 || _O2 > 255 || _O3 > 255 || _O4 > 255) throw new ArgumentException("No puedes exceder el valor de un octeto. ");
+                Dir[0] = (byte) _O1;
+                Dir[1] = (byte) _O2;
+                Dir[2] = (byte) _O3;
+                Dir[3] = (byte) _O4;
+                DirB += (byte) _O1;
+                DirB <<= 8;
+                DirB += (byte) _O2;
+                DirB <<= 8;
+                DirB += (byte) _O3;
+                DirB <<= 8;
+                DirB += (byte) _O4;
+                NP = _NP;
+                HP = _HP;
+                GenerateMask();
+                GenerateIDR();
+                GenerateIDB();
+            }
+            private uint DirB;
+            private byte[] Dir = new byte[4];
+            private byte[] Msk = new byte[4];
+            private byte[] IDR = new byte[4];
+            private byte[] IDB = new byte[4];
+            private int NP, HP;
+            public byte[] DireccionIP
+            {
+                get => Dir;
+            }
+            public byte[] Mascara
+            {
+                get => Msk;
+            }
+            public byte[] IDRed
+            {
+                get => IDR;
+            }
+            public byte[] IDBroadcast
+            {
+                get => IDB;
+            }
+            public int NetPortion
+            {
+                get => NP;
+            }
+            public int HostPortion
+            {
+                get => HP;
+            }
+            public byte PrimerOcteto
+            {
+                get => Dir[0];
+                set => Dir[0] = value;
+            }
+            public byte SegundoOcteto
+            {
+                get => Dir[1];
+                set => Dir[1] = value;
+            }
+            public byte TercerOcteto
+            {
+                get => Dir[2];
+                set => Dir[2] = value;
+            }
+            public byte CuartoOcteto
+            {
+                get => Dir[3];
+                set => Dir[3] = value;
+            }
+            public uint DireccionBinaria
+            {
+                get => DirB;
+                set => DirB = value;
+            }
+            private void GenerateMask()
+            {
+                int fullBytes = NP / 8, barelyByte = NP % 8;
+                for(int i = 0; i < fullBytes; i++) Msk[i] = 0b11111111;
+                for(int i = 0; i < barelyByte; i++) Msk[fullBytes] += (byte) Math.Pow(2, 7 - i);
+            }
+            private void GenerateIDR()
+            {
+                for(int i = 0; i < 4; i++)
+                {
+                    byte dir = Dir[i];
+                    byte msk = Msk[i];
+                    int idr = dir & msk;
+                    IDR[i] = (byte) idr;
+                }
+            }
+            private void GenerateIDB()
+            {
+                for(int i = 0; i < 4; i++) IDB[i] = IDR[i];
+                int fullBytes = HP / 8, barelyByte = HP % 8;
+                for(int i = 0; i < fullBytes; i++) IDB[3 - i] = 0b11111111;
+                for(int i = 0; i < barelyByte; i++) IDB[3 - fullBytes] += (byte) Math.Pow(2, i);
+            }
+            public override string ToString() => $"{Dir[0]}.{Dir[1]}.{Dir[2]}.{Dir[3]}";
+            public static Direccion operator ++(Direccion dir)
+            {
+                if(dir.CuartoOcteto < 255)
+                {
+                    dir.CuartoOcteto++;
+                }
+                else if(dir.TercerOcteto < 255)
+                {
+                    dir.TercerOcteto++;
+                    dir.CuartoOcteto = 0b00000000;
+                }
+                else if(dir.SegundoOcteto < 255)
+                {
+                    dir.SegundoOcteto++;
+                    dir.TercerOcteto = 0b00000000;
+                    dir.CuartoOcteto = 0b00000000;
+                }
+                else if(dir.PrimerOcteto < 255)
+                {
+                    dir.PrimerOcteto++;
+                    dir.SegundoOcteto = 0b00000000;
+                    dir.TercerOcteto = 0b00000000;
+                    dir.CuartoOcteto = 0b00000000;
+                }
+                else
+                {
+                    throw new Exception("Excediste el numero maximo para una direccion IPV4. ");
+                }
+                return new Direccion(dir.PrimerOcteto, dir.SegundoOcteto, dir.TercerOcteto, dir.CuartoOcteto, dir.NP);
+            }
+            public static Direccion operator --(Direccion dir)
+            {
+                if(dir.CuartoOcteto > 0)
+                {
+                    dir.CuartoOcteto--;
+                }
+                else if(dir.TercerOcteto > 0)
+                {
+                    dir.TercerOcteto--;
+                    dir.CuartoOcteto = 0b11111111;
+                }
+                else if(dir.SegundoOcteto > 0)
+                {
+                    dir.SegundoOcteto--;
+                    dir.TercerOcteto = 0b11111111;
+                    dir.CuartoOcteto = 0b11111111;
+                }
+                else if(dir.PrimerOcteto > 0)
+                {
+                    dir.PrimerOcteto--;
+                    dir.SegundoOcteto = 0b11111111;
+                    dir.TercerOcteto = 0b11111111;
+                    dir.CuartoOcteto = 0b11111111;
+                }
+                else
+                {
+                    throw new Exception("Excediste el numero minimo para una direccion IPV4. ");
+                }
+                return new Direccion(dir.PrimerOcteto, dir.SegundoOcteto, dir.TercerOcteto, dir.CuartoOcteto, dir.NP);
+            }
+            public static Direccion operator +(Direccion a, int b)
+            {
+                for(int i = 0; i < b; i++) a++;
+                return new Direccion(a.PrimerOcteto, a.SegundoOcteto, a.TercerOcteto, a.CuartoOcteto, a.NP);
+            }
+            public static Direccion operator -(Direccion a, int b)
+            {
+                for(int i = 0; i < b; i++) a--;
+                return new Direccion(a.PrimerOcteto, a.SegundoOcteto, a.TercerOcteto, a.CuartoOcteto, a.NP);
+            }
+            public static bool operator ==(Direccion a, Direccion b)
+            {
+                bool equal = true;
+                for(int i = 0; i < 4; i++) if(a.DireccionIP[i] != b.DireccionIP[i]) { equal = false; break; }
+                return equal;
+            }
+            public static bool operator !=(Direccion a, Direccion b)
+            {
+                return !(a == b);
+            }
+            public static string pointF(Byte [] formato)
+            {
+                string dir;
+                dir =+ formato[0] + "." + formato[1] + "." + formato[2] + "." + formato[3];
+                return dir;
+            }
+            // Subneteo con una mascara no variable y no recursivo, anadir el numero magico en la posicion del ultimo bit de la nueva mascara
+            // Suma de uno hasta el final del rango del subneteo, solo sumo 2^rango
+            public static List<Direccion> subnetWith(Direccion Dir, int slash)
+            {
+                if(slash <= Dir.NP) throw new ArgumentException("El slash debe ser mayor a la porcion de RED de la MASCARA. ", nameof(slash));
+                // Porcion de host y red
+                int HP = 32 - slash, NP = slash - Dir.NetPortion;
+                // Numero de redes y de direcciones
+                int n = (int) Math.Pow(2, NP), m = (int) Math.Pow(2, HP) - 2;
+                Console.WriteLine("El numero de bits de host es: " + HP);
+                Console.WriteLine("El numero de bits de red es: " + NP);
+                Console.WriteLine("El numero de hosts es: " + m);
+                Console.WriteLine("El numero de redes es: " + n);
+                // Numero magico
+                int mn = 0;
+                if(slash / 8 == 0) mn = 1;
+                else for(int i = 0; i < (slash % 8); i++) mn = (int) Math.Pow(2, 7 - i);
+                // Direccion nuevas (una lista de direcciones tal vez)
+                Direccion aux = new Direccion(Dir.PrimerOcteto, Dir.SegundoOcteto, Dir.TercerOcteto, Dir.CuartoOcteto, slash);
+                List<Direccion> idSubnets = new List<Direccion>();
+                // Calcular el id de red nuevo Y Anadir a la lista a regresar
+                // for(int i = 0; i < n; i++) idSubnets.Add(aux += (int) Math.Pow(2, 32 - (slash - 1)));
+                // Una nueva forma de calcuar las nuevas direcciones, con shitfing de direcciones y sumas
+                // Shifteo a la derecha hasta llegar al slash nuevo
+                Console.WriteLine();
+                return idSubnets;
+            }
+        }
+        public static void Main(string [] args)
+        {
+            Console.WriteLine("Subnetting program by Diego");
+            Direccion d1 = new Direccion(160, 18, 32, 0, 19);
+            Console.WriteLine("La direccion IPV4 es: " + Direccion.pointF(d1.DireccionIP));
+            Console.WriteLine("La mascara de subred es: " + Direccion.pointF(d1.Mascara));
+            Console.WriteLine("La ID de RED es: " + Direccion.pointF(d1.IDRed));
+            Console.WriteLine("La ID de BROADCAST es: " + Direccion.pointF(d1.IDBroadcast));
+            List<Direccion> subneteo = Direccion.subnetWith(d1, 23);
+            /*
+            List<Direccion> subneteo = Direccion.subnetWith(d1, 23);
+            foreach(Direccion d in subneteo)
+            {
+                Console.WriteLine(d);
+            }
+            */
+            // Pruebas de shifteo
+            ushort B = 0x00FF;
+            Console.WriteLine("Valor de 16 bits: " + B);
+            // Prueba de borrado SI SE BORRA (SI TE SALES DEL LIMITE YA SEA IZQUIERDO O DERECHO BORRAS ESA PARTE, ESO ME PODRIA SERVIR)
+            Console.WriteLine("Valor de 16 bits shifteado 8 posiciones derecha: " + (B >>= 8));
+            Console.WriteLine("Valor de 16 bits shifteado 8 posiciones izquierda: " + (B <<= 8));
+            Console.WriteLine("Valor de 16 bits shifteado 16 posiciones izquierda: " + (B <<= 8));
+        }
+    }
+}
+
+/*
+    Subnetting program by Diego
+    La direccion IPV4 es: 160.18.32.0
+    La mascara de subred es: 255.255.224.0
+    La ID de RED es: 160.18.32.0
+    La ID de BROADCAST es: 160.18.63.255
+    El numero de bits de host es: 9
+    El numero de bits de red es: 4
+    El numero de hosts es: 510
+    El numero de redes es: 16
+*/
