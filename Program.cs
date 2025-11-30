@@ -7,6 +7,15 @@ namespace subnet
         public static void Main(string [] args)
         {
             Console.WriteLine("El numero de argumentos es: " + args.Length);
+            String fs = "";
+            foreach(String s in args)
+            {
+                fs += s + " ";
+            }
+            Console.WriteLine("Full string: " + fs);
+            string pattern = @"^\d{1,3}\s\d{1,3}\s\d{1,3}\s\d{1,3}\s*$";
+            Console.WriteLine(Regex.IsMatch(fs, pattern));
+            
             if(args.Length == 0)
             {
                 Console.WriteLine("\t\t\t .: Subnetting program :.");
